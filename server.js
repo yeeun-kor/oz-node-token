@@ -32,28 +32,31 @@ app.post("/", (req, res) => {
   const userInfo = users.find(
     (el) => el.user_id === userId && el.user_password === userPassword
   );
-  console.log(userInfo);
-  // 유저정보가 없는 경우
   if (!userInfo) {
     res.status(401).send("로그인 실패");
   } else {
     const accessToken = jwt.sign({ userId: userInfo.user_id }, secretKey, {
       expiresIn: 1000 * 60 * 10,
     });
-    res.send(accessToken);
+    //쿠키에 저장하기
+    res.cookie("access", accessToken);
+    res.send("토큰생성");
   }
 });
 
-// 클라이언트에서 get 요청을 받은 경우
+// 클라이언트에서 get요청으로 토큰값에 맞는 유저정보(데이터베이스) return해주기
 app.get("/", (req, res) => {
-  //클라이언트에서 보낸 토큰키헤더값 추출
-  const accessToken = req.headers.authorization.split(" ")[1];
-  //토큰키헤더값 검사하여 일치하면 유저정보값이 넘어옴 -> payload변수로 저장
+  const { accessToken } = req.cookies;
   const payload = jwt.verify(accessToken, secretKey);
+  //해당 id값을 비교하여 데이터베이스에서 정보 클라이언트로 보내주기
   const userInfo = users.find((el) => el.user_id === payload.userId);
-  //실제 있는 데이터값을 통째로 넘겨야 하기 때문에,return 으로 json변환이 필요
-  //post는 그저 정보만 넘겨주는거라, return 은 필요없다. 
   return res.json(userInfo);
+});
+
+//토큰 삭제( 쿠키종료)
+app.delete("/", (req, res) => {
+  res.clearCookie("access");
+  res.send("쿠키삭제함,토큰종료");
 });
 
 app.listen(3000, () => console.log("서버 실행!"));
